@@ -99,8 +99,9 @@ if __name__ == "__main__":
     for b in blocknums:
         layer.SetAttributeFilter(options.blocknum + '=' + b)
 
-        if layer.GetFeatureCount() + dlayer.GetFeatureCount() > options.max_features or \
-           (layer.GetFeatureCount() > options.max_features and dlayer.GetFeatureCount() > 0):
+        if dlayer.GetFeatureCount() > 0 and \
+           (layer.GetFeatureCount() + dlayer.GetFeatureCount() > options.max_features or \
+            layer.GetFeatureCount() > options.max_features):
             l.info('Wrote ' + str(dlayer.GetFeatureCount()) + ' to ' + dest.name)
             dest.Destroy()
             i += 1
@@ -111,11 +112,12 @@ if __name__ == "__main__":
             l.warning('Block ' + b + ' has ' + str(layer.GetFeatureCount()) +
                       ' features but the max is ' + str(options.max_features))
 
-        [dlayer.CreateFeature(layer.GetFeature(f)) for f in range(layer.GetFeatureCount())]
+        [dlayer.CreateFeature(layer.GetNextFeature()) for f in range(layer.GetFeatureCount())]
 
     if dlayer.GetFeatureCount() == 0:
         n = dest.name
         dest.Destroy()
         ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource(n)
     else:
+        l.info('Wrote ' + str(dlayer.GetFeatureCount()) + ' to ' + dest.name)
         dest.Destroy()
