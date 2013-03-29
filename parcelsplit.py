@@ -72,6 +72,8 @@ if __name__ == "__main__":
         layer = src.GetLayerByName(options.layer)
         if not layer:
             l.error('Layer "' + options.layer + '" does not exist.')
+            l.error('Options are: ' +
+                    ','.join([src.GetLayerByIndex(i).GetName() for i in range(src.GetLayerCount())]))
             sys.exit(1)
     else:
         layer_names = [src.GetLayerByIndex(i).GetName() for i in range(src.GetLayerCount())]
