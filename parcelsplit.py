@@ -20,7 +20,12 @@ import os
 import optparse
 
 # Create a data source with a single layer that has the same properties as the
-# specified layer.  There must be a better way to do this.
+# specified layer.
+#
+# TODO: The fiona API for ogr has a more succinct way to do this:
+# http://gis.stackexchange.com/questions/56703/better-way-to-duplicate-a-layer-using-ogr-in-python
+# I'm not sure if filtering records by attribute is as fast as ogr, or if
+# there's a way to get at that feature under the hood.
 def create_dest(outdir, i, layer):
     driver = ogr.GetDriverByName('ESRI Shapefile')
     dest = os.path.join(outdir, '%s_%d.shp' % (layer.GetName(), i))
