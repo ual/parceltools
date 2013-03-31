@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<osm version="0.6" upload="false" generator="uvmogr2osm">
+  <node lat="37.765297302" visible="true" lon="-122.430390469" id="-2"/>
+  <node lat="37.765365763" visible="true" lon="-122.430397034" id="-3"/>
+  <node lat="37.765393147" visible="true" lon="-122.43039966" id="-4"/>
+  <node lat="37.76541923" visible="true" lon="-122.429968472" id="-5"/>
+  <node lat="37.765323385" visible="true" lon="-122.429959282" id="-6"/>
+  <way visible="true" id="-1">
+    <nd ref="-2"/>
+    <nd ref="-3"/>
+    <nd ref="-4"/>
+    <nd ref="-5"/>
+    <nd ref="-6"/>
+    <nd ref="-2"/>
+    <tag k="apn:3" v="3558111"/>
+    <tag k="apn:0" v="3558108"/>
+    <tag k="apn:1" v="3558109"/>
+    <tag k="apn:2" v="3558110"/>
+    <tag k="landuse" v="unknown"/>
+    <tag k="apn:4" v="3558112"/>
+  </way>
+</osm>
