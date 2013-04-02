@@ -5,7 +5,7 @@ l.basicConfig(level=l.INFO, format="%(levelname)s: %(message)s")
 def filterTags(attrs):
     if not attrs:
         return {}
-    tags = {'landuse':'unknown'}
+    tags = {'area':'yes'}
     for k,v in attrs.iteritems():
         if k == u'BLKLOT':
             tags['apn'] = v
