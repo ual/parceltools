@@ -81,11 +81,16 @@ def divide_by_blocknum(layer, options):
 
 def _sort_one_pass(features):
     sorted = {}
+    total = len(features)
+    count = 0
     while True:
         if len(features) == 0:
             break
+        count += 1
         current_key = features.keys()[0]
         current = features.pop(current_key)
+        sys.stdout.write("\r%f%%" % (count*100.0/total,))
+        sys.stdout.flush()
         for key in sorted.keys():
             if current_key.Touches(key):
                 new_key = key.Union(current_key)
