@@ -28,10 +28,10 @@ import optparse
 # there's a way to get at that feature under the hood.
 def create_dest(outdir, i, layer):
     driver = ogr.GetDriverByName('ESRI Shapefile')
-    dest = os.path.join(outdir, '%s_%d.shp' % (layer.GetName(), i))
+    dest = os.path.join(outdir, '%s_%04d.shp' % (layer.GetName(), i))
     if os.path.exists(dest):
         driver.DeleteDataSource(dest)
-    dest_lname = '%s_%d' % (layer.GetName(), i)
+    dest_lname = '%s_%04d' % (layer.GetName(), i)
     ds = driver.CreateDataSource(dest)
     dest_layer = ds.CreateLayer(dest_lname,
                                 srs = layer.GetSpatialRef(),
