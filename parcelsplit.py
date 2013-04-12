@@ -40,6 +40,75 @@ def create_dest(outdir, i, layer):
     [dest_layer.CreateField(feature.GetFieldDefnRef(i)) for i in range(feature.GetFieldCount())]
     return ds
 
+def divide_by_blocknum(layer, options):
+    if options.index:
+        l.info('Creating index...')
+        src.ExecuteSQL('CREATE INDEX ON ' + layer.GetName() + ' USING ' + options.blocknum)
+
+    l.info('Reading features...')
+    blocknums = set()
+    features = [layer.GetNextFeature().GetField(options.blocknum) for i in range(layer.GetFeatureCount())]
+    blocknums = sorted([x for x in features if x not in blocknums and not blocknums.add(x)])
+
+    dest = create_dest(options.outdir, 0, layer)
+    dlayer = dest.GetLayerByIndex(0)
+    i = 0
+    for b in blocknums:
+        layer.SetAttributeFilter(options.blocknum + '=' + b)
+
+        if dlayer.GetFeatureCount() > 0 and \
+           (layer.GetFeatureCount() + dlayer.GetFeatureCount() > options.max_features or \
+            layer.GetFeatureCount() > options.max_features):
+            l.info('Wrote ' + str(dlayer.GetFeatureCount()) + ' to ' + dest.name)
+            dest.Destroy()
+            i += 1
+            dest = create_dest(options.outdir, i, layer)
+            dlayer = dest.GetLayerByIndex(0)
+
+        if layer.GetFeatureCount() > options.max_features:
+            l.warning('Block ' + b + ' has ' + str(layer.GetFeatureCount()) +
+                      ' features but the max is ' + str(options.max_features))
+
+        [dlayer.CreateFeature(layer.GetNextFeature()) for f in range(layer.GetFeatureCount())]
+
+    if dlayer.GetFeatureCount() == 0:
+        n = dest.name
+        dest.Destroy()
+        ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource(n)
+    else:
+        l.info('Wrote ' + str(dlayer.GetFeatureCount()) + ' to ' + dest.name)
+        dest.Destroy()
+
+def divide_by_touching(layer, options):
+    # Sort the polygons by whether or not they touch
+    l.info('Reading features...')
+    features = set([layer.GetNextFeature() for i in range(layer.GetFeatureCount())])
+    sorted = []
+    count = 0
+    l.info('Sorting features...')
+    while True:
+        if len(features) == 0:
+            break
+        current = features.pop()
+        sys.stdout.write("\r%f%%" % (count*100.0/layer.GetFeatureCount(),))
+        sys.stdout.flush()
+        for group in sorted:
+            for member in group:
+                if current.GetGeometryRef().Touches(member.GetGeometryRef()):
+                    group.append(current)
+                    count += 1
+                    current = None
+                    break
+            if not current:
+                break
+        # we checked all of the sorted blocks to no avail.  Create a new sorted
+        # group.
+        if current:
+            sorted.append([current])
+            count += 1
+
+    l.info('Sorted %d features into %d groups' % (layer.GetFeatureCount(), len(sorted)))
+
 if __name__ == "__main__":
     usage = "usage: %prog [OPTIONS] <shpfile>"
     parser = optparse.OptionParser(usage=usage)
@@ -58,12 +127,6 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
     if len(args) != 1:
         parser.error("Please specify a single shapefile.")
-
-    # TODO: The blocknum is required so we can break up the shapefile on block
-    # boundaries.  Eventually it would be great if we could just use adjacent
-    # polygons by default.
-    if not options.blocknum:
-        parser.error('For now, you must specify the attribute in the shp file that represents the block number')
 
     shpfile = args[0]
     src = ogr.Open(shpfile, 0)
@@ -86,43 +149,12 @@ if __name__ == "__main__":
                 ','.join(layer_names) + ')')
         sys.exit(1)
 
-    if options.index:
-        l.info('Creating index...')
-        src.ExecuteSQL('CREATE INDEX ON ' + layer.GetName() + ' USING ' + options.blocknum)
-
-    l.info('Reading features...')
-    blocknums = set()
-    features = [layer.GetNextFeature().GetField(options.blocknum) for i in range(layer.GetFeatureCount())]
-    blocknums = sorted([x for x in features if x not in blocknums and not blocknums.add(x)])
-
     if not os.path.exists(options.outdir):
         os.mkdir(options.outdir)
-    outdir = os.path.abspath(options.outdir)
-    dest = create_dest(outdir, 0, layer)
-    dlayer = dest.GetLayerByIndex(0)
-    i = 0
-    for b in blocknums:
-        layer.SetAttributeFilter(options.blocknum + '=' + b)
+    options.outdir = os.path.abspath(options.outdir)
 
-        if dlayer.GetFeatureCount() > 0 and \
-           (layer.GetFeatureCount() + dlayer.GetFeatureCount() > options.max_features or \
-            layer.GetFeatureCount() > options.max_features):
-            l.info('Wrote ' + str(dlayer.GetFeatureCount()) + ' to ' + dest.name)
-            dest.Destroy()
-            i += 1
-            dest = create_dest(outdir, i, layer)
-            dlayer = dest.GetLayerByIndex(0)
-
-        if layer.GetFeatureCount() > options.max_features:
-            l.warning('Block ' + b + ' has ' + str(layer.GetFeatureCount()) +
-                      ' features but the max is ' + str(options.max_features))
-
-        [dlayer.CreateFeature(layer.GetNextFeature()) for f in range(layer.GetFeatureCount())]
-
-    if dlayer.GetFeatureCount() == 0:
-        n = dest.name
-        dest.Destroy()
-        ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource(n)
+    if options.blocknum:
+        divide_by_blocknum(layer, options)
     else:
-        l.info('Wrote ' + str(dlayer.GetFeatureCount()) + ' to ' + dest.name)
-        dest.Destroy()
+        divide_by_touching(layer, options)
+
