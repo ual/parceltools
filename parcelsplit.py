@@ -80,27 +80,24 @@ def divide_by_blocknum(layer, options):
         dest.Destroy()
 
 def _sort_one_pass(features):
-    sorted = []
+    sorted = {}
     while True:
         if len(features) == 0:
             break
-        current = features.pop()
-        for group in sorted:
-            for member in group:
-                for c in current:
-                    if c.GetGeometryRef().Touches(member.GetGeometryRef()):
-                        group += current
-                        current = None
-                        break
-                if not current:
-                    break
-            if not current:
+        current_key = features.keys()[0]
+        current = features.pop(current_key)
+        for key in sorted.keys():
+            if current_key.Touches(key):
+                new_key = key.Union(current_key)
+                sorted[new_key] = sorted[key] + current
+                del(sorted[key])
+                current = None
                 break
 
         # we checked all of the sorted blocks to no avail.  Create a new sorted
         # group.
         if current:
-            sorted.append(current)
+            sorted[current_key] = current
     return sorted
 
 def divide_by_touching(layer, options):
@@ -114,6 +111,8 @@ def divide_by_touching(layer, options):
 
     # Start with each feature in its own list
     features = [[layer.GetNextFeature()] for i in range(layer.GetFeatureCount())]
+    geometries = [f[0].GetGeometryRef() for f in features]
+    features = dict(zip(geometries, features))
     l.info('Sorting features...')
     previous_len = -1
     count = 0
@@ -129,7 +128,7 @@ def divide_by_touching(layer, options):
     dest = create_dest(options.outdir, 0, layer)
     dlayer = dest.GetLayerByIndex(0)
     i = 0
-    for group in features:
+    for key, group in features.iteritems():
 
         if dlayer.GetFeatureCount() > 0 and \
            (len(group) + dlayer.GetFeatureCount() > options.max_features or \
