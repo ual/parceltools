@@ -125,7 +125,7 @@ if __name__ == "__main__":
     parser.add_option('-i', '--index', dest='index', action="store_true",
                       help='''Create an index to speed up processing''')
     parser.add_option('-m', '--max-features', dest='max_features', default=1000,
-                      help='''Maximum features per chunk (Defaults to 1000)''')
+                      help='''Maximum features per chunk (Defaults to 1000)''', type=int)
     parser.add_option('-o', '--output-directory', dest='outdir', default='.',
                       help='''Output directory for chunks''')
 
