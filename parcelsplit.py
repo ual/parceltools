@@ -80,6 +80,11 @@ def divide_by_blocknum(layer, options):
         dest.Destroy()
 
 def divide_by_touching(layer, options):
+
+    if options.index:
+        l.info('Creating index...')
+        src.ExecuteSQL('CREATE SPATIAL INDEX ON ' + layer.GetName())
+
     # Sort the polygons by whether or not they touch
     l.info('Reading features...')
     features = set([layer.GetNextFeature() for i in range(layer.GetFeatureCount())])
@@ -117,7 +122,7 @@ if __name__ == "__main__":
                       help='''Layer in the shpfile to split.''')
     parser.add_option('-b', '--block-number-attribute', dest='blocknum',
                       help='''Attribute that represents the block number''')
-    parser.add_option('-i', '--index', dest='index',
+    parser.add_option('-i', '--index', dest='index', action="store_true",
                       help='''Create an index to speed up processing''')
     parser.add_option('-m', '--max-features', dest='max_features', default=1000,
                       help='''Maximum features per chunk (Defaults to 1000)''')
