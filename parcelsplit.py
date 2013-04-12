@@ -79,6 +79,30 @@ def divide_by_blocknum(layer, options):
         l.info('Wrote ' + str(dlayer.GetFeatureCount()) + ' to ' + dest.name)
         dest.Destroy()
 
+def _sort_one_pass(features):
+    sorted = []
+    while True:
+        if len(features) == 0:
+            break
+        current = features.pop()
+        for group in sorted:
+            for member in group:
+                for c in current:
+                    if c.GetGeometryRef().Touches(member.GetGeometryRef()):
+                        group += current
+                        current = None
+                        break
+                if not current:
+                    break
+            if not current:
+                break
+
+        # we checked all of the sorted blocks to no avail.  Create a new sorted
+        # group.
+        if current:
+            sorted.append(current)
+    return sorted
+
 def divide_by_touching(layer, options):
 
     if options.index:
@@ -87,32 +111,46 @@ def divide_by_touching(layer, options):
 
     # Sort the polygons by whether or not they touch
     l.info('Reading features...')
-    features = set([layer.GetNextFeature() for i in range(layer.GetFeatureCount())])
-    sorted = []
-    count = 0
-    l.info('Sorting features...')
-    while True:
-        if len(features) == 0:
-            break
-        current = features.pop()
-        sys.stdout.write("\r%f%%" % (count*100.0/layer.GetFeatureCount(),))
-        sys.stdout.flush()
-        for group in sorted:
-            for member in group:
-                if current.GetGeometryRef().Touches(member.GetGeometryRef()):
-                    group.append(current)
-                    count += 1
-                    current = None
-                    break
-            if not current:
-                break
-        # we checked all of the sorted blocks to no avail.  Create a new sorted
-        # group.
-        if current:
-            sorted.append([current])
-            count += 1
 
-    l.info('Sorted %d features into %d groups' % (layer.GetFeatureCount(), len(sorted)))
+    # Start with each feature in its own list
+    features = [[layer.GetNextFeature()] for i in range(layer.GetFeatureCount())]
+    l.info('Sorting features...')
+    previous_len = -1
+    count = 0
+    while len(features) != previous_len:
+        l.info('\titeration %d...' % count)
+        previous_len = len(features)
+        features = _sort_one_pass(features)
+        count += 1
+
+    sys.stdout.write("\n")
+    l.info('Sorted %d features into %d groups' % (layer.GetFeatureCount(), len(features)))
+
+    dest = create_dest(options.outdir, 0, layer)
+    dlayer = dest.GetLayerByIndex(0)
+    i = 0
+    for group in features:
+
+        if dlayer.GetFeatureCount() > 0 and \
+           (len(group) + dlayer.GetFeatureCount() > options.max_features or \
+            len(group) > options.max_features):
+            l.info('Wrote ' + str(dlayer.GetFeatureCount()) + ' to ' + dest.name)
+            dest.Destroy()
+            i += 1
+            dest = create_dest(options.outdir, i, layer)
+            dlayer = dest.GetLayerByIndex(0)
+
+        if len(group) > options.max_features:
+            l.warning('exceeded max features')
+        [dlayer.CreateFeature(f) for f in group]
+
+    if dlayer.GetFeatureCount() == 0:
+        n = dest.name
+        dest.Destroy()
+        ogr.GetDriverByName('ESRI Shapefile').DeleteDataSource(n)
+    else:
+        l.info('Wrote ' + str(dlayer.GetFeatureCount()) + ' to ' + dest.name)
+        dest.Destroy()
 
 if __name__ == "__main__":
     usage = "usage: %prog [OPTIONS] <shpfile>"
