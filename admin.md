@@ -18,13 +18,16 @@ port for collecting parcel data.  Here are some notes:
   cloning the forked repository.  I set the permissions so that anyone in the
   www-data group (including me and apache) can read and write.
 
-      sudo mkdir -p /srv/openparcelmap
-      sudo chown yourname.yourgroup /srv/openparcelmap/
-      cd /srv/openparcelmap
-      git clone git@github.com:ual/openstreetmap-website.git
-      sudo chown -R www-data:www-data openstreetmap-website/
-      sudo chmod -R g+w openstreetmap-website/
-      sudo chmod -R g+s openstreetmap-website/
+
+```
+    sudo mkdir -p /srv/openparcelmap
+    sudo chown yourname.yourgroup /srv/openparcelmap/
+    cd /srv/openparcelmap
+    git clone git@github.com:ual/openstreetmap-website.git
+    sudo chown -R www-data:www-data openstreetmap-website/
+    sudo chmod -R g+w openstreetmap-website/
+    sudo chmod -R g+s openstreetmap-website/
+```
 
 * I used the [Phusion Passenger]
   (http://www.modrails.com/documentation/Users%20guide%20Apache.html#_deploying_a_rack_based_ruby_application_including_rails_gt_3)
