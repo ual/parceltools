@@ -24,9 +24,6 @@ function cmd_or_fail() {
 	fi
 }
 
-log backing up state.txt
 cp ${OPMTILE}/state.txt ${OPMTILE}/state.txt.backup
-log fetching replication files
 cmd_or_fail osmosis --read-replication-interval workingDirectory=${OPMTILE} --simplify-change --write-xml-change changes.osc.gz
-log applying replication files
 cmd_or_fail osm2pgsql --append -s -S ${STYLE} -d ${DB} -U ${DBUSER} -H localhost changes.osc.gz
