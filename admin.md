@@ -99,17 +99,33 @@ http://wiki.openstreetmap.org/wiki/Osmosis/Replication
 
 ```
     osmosis --read-apidb authFile=~/opm.auth validateSchemaVersion=no \
-    --write-xml /var/www/planet/planet-latest.bz2
+    --write-xml /var/www/planet/planet-latest.osm.bz2
 ```
 
-6. Go learn more about replication and planet file management and make osmosis
-   run under cron and generate replication diffs.
+6. Create replication directory layout
+
+    mkdir -p /var/www/planet/replication
+    mkdir -p /var/www/planet/replication/minute
+
+7. Create a single replication:
+
+    osmosis -q --replicate-apidb authFile=~/opm.auth 
+            allowIncorrectSchemaVersion=true --write-replication \
+            workingDirectory=/var/www/planet/replication/minute/
 
 tile rendering database
 =======================
 
 Tiles are rendered from a postgis database that is regularly sync'd with the
-planet dumps.
+planet dumps.  See http://wiki.openstreetmap.org/wiki/Minutely_Mapnik
+
+0. If you haven't already, grab parceltools.  All of the following commands
+   assume that you are in the parceltools directory.
+
+```
+    git clone git://github.com/ual/parceltools.git
+    cd parceltools
+```
 
 1. Create a suitable user and DB
 
@@ -119,15 +135,67 @@ planet dumps.
     createdb -T template_postgis opmtile_dev
 ```
 
-2. Get [the latest planet file]
-   (http://opm.ual.berkeley.edu/planet/planet-latest.osm.bz2.)
+   Note: I set up my .pgpass file so that I can perform the following tasks
+   without entering the opm password over and over.
 
-3. Import planet file:
+2. Make a directory where you will keep all of this stuff
 
 ```
-    echo 'node,way   BLKLOT      text         polygon' > foo.style
-    osm2pgsql -s -S foo.style -d opmtile_dev -U opm -H localhost -W planet-latest.osm.bz2
+    mkdir /srv/openparcelmap/opmtile/
+    export OPMTILE=/srv/openparcelmap/opmtile/
+    sudo touch /var/log/opmtile.log
+    sudo chown $USER /var/log/opmtile.log
 ```
+
+3. Get [the latest planet file]
+   (http://planet-opm.ual.berkeley.edu/planet-latest.osm.bz2.)
+
+4. Import planet file:
+
+```
+    bunzip2 -c planet-latest.osm.bz2 | osm2pgsql -s -S opmtile/opmtile-osm2pgsql.style -d opmtile_dev -U opm -H localhost /dev/stdin
+```
+
+5. Set up the replication files:
+
+```
+    osmosis --read-replication-interval-init workingDirectory=$OPMTILE
+```
+
+   Edit the resulting configuration.txt file to point
+   baseUrl=http://planet-opm.ual.berkeley.edu/replication/minute
+
+6. Create a state.txt file.
+
+```
+    #Sun Apr 21 09:36:05 PDT 2013
+    sequenceNumber=0
+    txnMaxQueried=2363
+    txnReadyList=
+    timestamp=2013-04-21T14\:36\:05Z
+    txnMax=2363
+    txnActiveList=
+```
+
+   I created this by subtracting 2h from the timestamp of the
+   http://planet-opm.ual.berkeley.edu/replication/minute/000/000/000.state.txt
+   file.  This little bit of bookeeping is a kinda painful weakness in the OSM
+   stack, IMHO.
+
+7. Fetch and apply replication data.  Note that if you are not using the exact
+   same directory names as described above (i.e., /srv/openparcelmap/opmtile/)
+   you will have to edit the opmtile.sh script.
+
+```
+    ./opmtile/opmtile.sh
+```
+
+   Expect the state.txt file to update.  Note that if the command fails, the
+   state.txt file will be reverted so that subsequent invocations will try
+   again.  Expect logging output to appear in syslog.
+
+8. Repeat steps 5 periodically.  When the state.txt file stabilizes, you're up
+   to date.  Consider automating this with cron.
 
 tile renderer
 =============
